@@ -1,0 +1,275 @@
+<html>
+<head>
+<!-- The examples online have the html and the javascript listed in -->
+<!-- seperate tabs.  The html provided is only for the block containing the -->
+<!-- plot.  This template is a complete html file.   -->
+
+<!-- Since all the interaction with the plotly graph is done through the -->
+<!-- postMessageAPI, one need not include the javascript file for plotly. -->
+<!-- This is particularly true if all your graphs are going to be created -->
+<!-- elsewhere.  If you needed to make your graphs in the webpage themselves -->
+<!-- then you would need to include the plotly javascript file. -->
+
+    <script src="plotly-latest.min.js"></script>
+    <script src="https://code.jquery.com/jquery-1.10.2.js"></script>
+    
+    <meta charset="utf-8"/>
+</head>
+<body>
+    <div class="row" style="padding:20px;">
+	<label for="plotURL">Add a moving average to any Plotly graph</label>
+	<!-- The field value should be the url of the plot that you wish to embed
+	     Since you will probably have a certain plot that you want to
+	     manipulate, in your javascript code, rather than have it input
+	     here, you will have a variable in your script block or js file
+	     that has the address of the plot that you are embedding. -->
+	<input id="plotURL" style="padding:8px;width:400px" value="https://plot.ly/~GlobalAI/65">
+	<button onclick="newPlot()" class="button-primary">Go!</button>
+	<br>
+	<h1> Original Moving Average Example </h1>
+	<label>Moving average window</label>
+	<button onclick="toggleAvg()">Toggle Average</button>
+	<input type="range" id="myRange" value="2" min="1" max="20" onchange="applyAvg(this);">
+	<br>
+	<!-- Append .embed to the link for the plotly plot to embedd the plot in a webpage.  There are two ways they recommend for embedding the plot.  This is listed as the iframe approach.  The other method is referred to as the html approach.  The html approach links to images of the plot as well as javascript for updating it. -->
+	<iframe src="https://plot.ly/~GlobalAI/65.embed" height=500 width=100% id="plot" 
+		seamless="seamless" frameborder=0></iframe>
+
+    </div>
+    <div>
+	<h1> Color Example </h1>
+	<label>Change color of line</label>
+	<input type="range" id="myColor" value="6" min="0" max="6" onchange="changeColor(this);">
+	<br>
+
+	<iframe src="https://plot.ly/~GlobalAI/5.embed" height=500 width=100% id="plot2" 
+		seamless="seamless" frameborder=0 onload="changeColor(this);"></iframe>
+
+    </div>
+    <script type="text/javascript" charset="utf-8" >
+     // Made with Plotly's postMessage API
+     // https://github.com/plotly/postMessage-API
+     function init_graph_obj(id){
+	 var obj = {
+             graphContentWindow: $('#'+id)[0].contentWindow,
+             id: id
+	 };
+	 /* This sets up a timer for each iframe/graph that sends a ping
+	    message to the iframe/graph evert half second.  The pinging is
+	    stopped below with the call to clearInterval() in the
+	    eventlisterner.  Note that postMessage as it is used here has
+	    two fields, a task and a target base url.  There are thirteen
+	    different tasks that an embedded plotly graph can be asked to
+	    perform.  When the plotly graph receives the message it
+	    generates a return message.  Note the first ping is sent a half second after the call to setInterval.  
+	  */
+	 
+	 obj.pinger = setInterval(function(){
+             obj.graphContentWindow.postMessage({task: 'ping'}, 'https://plot.ly');
+	 }, 1000);
+	 return obj;
+     }
+
+     var graphs = {};
+
+     /* This is where jquery is used to access all the iframes
+	and assocaite the ping function with each plotly graph.
+      */
+     $('iframe').each(function(i, obj){
+	 graphs[obj.id] = init_graph_obj(obj.id);
+     });
+
+     var average = false;
+     var plot = document.getElementById('plot').contentWindow;
+     var plot2 = document.getElementById('plot2').contentWindow;
+     var X, Y, vis;
+     //console.log(plot);
+
+     //Checks if a variables is numeric.
+     var d3_numeric = function(x) {
+	 return !isNaN(x);
+     }
+
+     // 
+     var d3sum = function(array, f) {
+	 var s = 0,
+	     n = array.length,
+	     a,
+	     i = -1;
+	 if (arguments.length === 1) {
+	     // zero and null are equivalent
+	     while (++i < n) if (d3_numeric(a = +array[i])) s += a; 
+	 } else {
+	     while (++i < n) if (d3_numeric(a = +f.call(array, array[i], i))) s += a;
+	 }
+	 return s;
+     };
+
+     var movingWindowAvg = function (arr, step) {  
+	 return arr.map(function (_, idx) { 
+             var wnd = arr.slice(idx - step, idx + step + 1); 
+             var result = d3sum(wnd) / wnd.length; if (isNaN(result)) { result = _; }
+             return result; 
+	 });
+     };
+
+     function applyAvg(){
+	 console.log(plot);
+	 console.log('Posting message');
+	 // get current x, y data
+	 plot.postMessage({
+             task: 'getAttributes',
+             attributes: [ 'data[0].x', 'data[0].y' ] },
+			  'https://plot.ly/');   
+     };
+
+     function changeColor(){
+	 console.log(plot2);
+	 console.log('Posting message');
+	 // get current x, y dat
+	 var colorSlider=document.getElementById('myColor');
+	 var color;
+	 var value=colorSlider.value;
+	 switch(value)
+	 {
+	     case '0':
+	     console.log('Value== ' + value);
+	     color='red';
+	     console.log(color);
+	     break;
+	     case '1':
+	     color='orange';
+	     break;
+	     case '2':
+	     color='yellow';
+	     break;
+	     case '3':
+	     color='green';
+	     break;
+	     case '4':
+	     color='blue';
+	     break;
+	     case '5':
+	     color='purple';
+	     break;
+	     default:
+	     console.log('Value== ' + value);
+	     color='black';
+	 }
+	 var colordict={};
+	 colordict["marker.color"]=color;
+	 console.log(colordict);
+	 plot2.postMessage({
+             task: 'restyle',
+             update: colordict,
+	     indices: [0]
+	 },'https://plot.ly/');   
+     }
+
+
+     window.addEventListener('message', function(e) {
+	 var message = e.data;
+	 var graph;
+	 console.log('Message Received');
+
+	 /*Finds the graph that generated the event.*/
+	 for(var i in graphs) {
+	     if(graphs[i].graphContentWindow === e.source) {
+		 graph = graphs[i];
+	     }
+	 }
+	 if(typeof graph === "undefined") {
+	     return;
+	 }
+	 var pinger = graph.pinger;
+	 var graphContentWindow = graph.graphContentWindow;
+	 var id = graph.id;
+	 
+
+	 if('pong' in message && message.pong) {
+	     /* This stops the pinging.*/
+	     clearInterval(pinger);
+	     /*This tells the plotly the events for which it should send messages.*/
+	     graphContentWindow.postMessage({
+		 'task': 'listen',
+		 'events': ['click', 'hover', 'zoom'] // Customize events here
+	     }, 'https://plot.ly');
+	     /* Logs the ping message to the console.*/
+	     console.log(id, '-->', message);
+	 } 
+	 else
+	 {
+	     if( 'data[1].visible' in message.response ){
+		 var vis = message.response['data[1].visible'];
+		 console.log('Average visible', vis);
+		 if( vis === undefined ){
+		     plot.postMessage({
+			 task: 'getAttributes',
+			 attributes: [ 'data[0].x', 'data[0].y' ] },
+				      'https://plot.ly/');
+		 }
+		 else if( vis == true ){
+		     vis = false;    
+		 }
+		 else{
+		     vis = true;
+		 }
+	     
+		 plot.postMessage({
+		     task: 'restyle',
+		     update: { 'visible':vis },
+		     indices: [1]
+		 }, 'https://plot.ly'); 
+	     }
+	     else{
+		 var window = document.getElementById('myRange').value;
+		 X = message.response['data[0].x'];
+		 Y = message.response['data[0].y'];  
+		 if( average ){
+		     var arr = movingWindowAvg( Y, Number(window) );     
+		     console.log('Recalculated average');
+		     plot.postMessage({
+			 task: 'restyle',
+			 update: { y: [arr], x: [X], 'visible':true },
+			 indices: [1]
+		     }, 'https://plot.ly');  
+		 }
+		 else{       
+		     avg = { y: [arr], x: [X], visible:true, mode:'line' };
+		     console.log( 'Adding moving average', avg );
+		     plot.postMessage({
+			 task: 'addTraces',
+			 traces: [ avg ],
+			 newIndices: [1]
+		     }, 'https://plot.ly');  
+		     applyAvg();
+		     average = true;
+		 }
+	     }
+	 }
+     }
+     );
+
+     function toggleAvg(){
+	 // get current x, y data
+	 console.log( 'Toggle  moving average');
+	 plot.postMessage({
+	     task: 'getAttributes',
+	     attributes: [ 'data[1].visible' ] },
+			  'https://plot.ly/');
+	 console.log( 'Message Posted');
+     }
+
+     function newPlot(){
+	 var plotURL = document.getElementById('plotURL').value + '.embed';
+	 var iframe = document.getElementById('plot');
+	 iframe.src = plotURL;   
+	 average = false;
+     }
+
+
+    </script>
+
+</body>
+
+</html>
