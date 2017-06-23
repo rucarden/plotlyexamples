@@ -1,29 +1,32 @@
+<!-- This example came from the plotly postMessage API git repository. -->
+<!-- I have removed some of the things that are not needed for the example. -->
+What has been removed can be seen by tracking the changes in this file.
 <!DOCTYPE HTML>
 <html>
 <title>Plotly postMessage API</title>
 <head>
+    <!-- This is not necessary for this example, it facilitates accessing -->
+    <!-- some of the objects in the webpage.  The way it is used here would -->
+    <!-- be useful for dealing with several plots on one page. -->
     <script src="https://code.jquery.com/jquery-1.10.2.js"></script>
-    <link href='https://fonts.googleapis.com/css?family=Open+Sans:400,300,700' rel='stylesheet' type='text/css'>
-    <link rel="stylesheet" href="http://yui.yahooapis.com/pure/0.5.0/base-min.css">
-    <link rel="stylesheet" href="http://yui.yahooapis.com/pure/0.5.0/pure-min.css">
     <meta name="description" content="Interactively view x, y slices through my_graphs and contour plots online with Plotly.">
 </head>
 
 <body style="font-family: 'Open Sans', serif; background: #edf1f8">
-    <a href="https://github.com/plotly/postMessage-API"><img style="position: absolute; top: 0; left: 0; border: 0;" src="https://camo.githubusercontent.com/c6625ac1f3ee0a12250227cf83ce904423abf351/68747470733a2f2f73332e616d617a6f6e6177732e636f6d2f6769746875622f726962626f6e732f666f726b6d655f6c6566745f677261795f3664366436642e706e67" alt="Fork me on GitHub" data-canonical-src="https://s3.amazonaws.com/github/ribbons/forkme_left_gray_6d6d6d.png"></a>
-    <div class="pure-g">
-        <div class="pure-u-7-24">
-            <div style="margin: 0 2em 0; text-align: left; margin-top: 100px;">
-                <h1 style="text-transform: uppercase; color: #447bdc;">
+    <div>
+        <div>
+            <div>
+                <h1>
                     Bind Custom Client-Side to Plotly Graphs
                 </h1>
 
-                <p style="font-weight: 300; color: #1d3b84; opacity: 0.5">
+                <p>
+		  The console in firefox can be opened in firefox by presseing Shift-F5, and then clicking on console.  The console is useful for debugging a webpage.  You can print things to the console.  This example.  Prints messages indicating which event has just occured.<br>
                     Open your console and try a few things:<br>
                     1 - Click, hover, or zoom on points in the my_graph. You'll see the messages printed and you can add
                     custom callbacks to these events.<br><br>
                     2 - Make new plots on the client with the postMessage API:
-<pre style="font-size: 0.75em;"><code>
+<pre><code>
     graphs.my_graph.graphContentWindow.postMessage({
         'task': 'newPlot',
         'data': [
@@ -38,7 +41,7 @@
             </div>
         </div>
 
-        <div class="pure-u-17-24">
+        <div>
             <iframe id="my_graph"
                     src="https://plot.ly/~chris/5496.embed"
                     style="width:100%; height:600px; border:none"
@@ -46,77 +49,90 @@
             </iframe>
         </div>
     </div>
-
-<script type="text/javascript" charset="utf-8">
-
-/*
-Boiler-Plate Plotly Embed Code
-Create a `graphs` object that adds listeners to every embedded iFrame
-and provides graphContentWindow for posting messages to, e.g.
-
-graphs.my_graph.graphContentWindow.postMessage({
-    'task': 'newPlot',
-    'data': [
-    {
-        'x': [1,2,3],
-        'y': [10,20,30],
-        'type': 'scatter'
-    }],
-    'layout': {'title': 'new title'}
-}, 'https://plot.ly');
-*/
+    
+    <script type="text/javascript" charset="utf-8">
+     /*This code could be placed in a seperate file.*/
+     /*
+	Boiler-Plate Plotly Embed Code
+	Create a `graphs` object that adds listeners to every embedded iFrame
+	and provides graphContentWindow for posting messages to, e.g.
+	The example currently only has one iframe.  
+      */
 
 
-function init_graph_obj(id){
-    var obj = {
-        graphContentWindow: $('#'+id)[0].contentWindow,
-        id: id
-    };
-    obj.pinger = setInterval(function(){
-        obj.graphContentWindow.postMessage({task: 'ping'}, 'https://plot.ly');
-    }, 500);
-    return obj;
+
+     function init_graph_obj(id){
+	 var obj = {
+             graphContentWindow: $('#'+id)[0].contentWindow,
+             id: id
+	 };
+	 /* This sets up a timer for each iframe/graph that sends a ping
+	    message to the iframe/graph evert half second.  The pinging is
+	    stopped below with the call to clearInterval() in the
+	    eventlisterner.  Note that postMessage as it is used here has
+	    two fields, a task and a target base url.  There are thirteen
+	    different tasks that an embedded plotly graph can be asked to
+	    perform.  When the plotly graph receives the message it
+	    generates a return message.  Note the first ping is sent a half second after the call to setInterval.  
+	  */
+	 
+	 obj.pinger = setInterval(function(){
+             obj.graphContentWindow.postMessage({task: 'ping'}, 'https://plot.ly');
+	 }, 500);
+	 return obj;
+     }
+
+     var graphs = {};
+
+     /* This is where jquery is used to access all the iframes
+	and assocaite the ping function with each plotly graph.
+      */
+     $('iframe').each(function(i, obj){
+	 graphs[obj.id] = init_graph_obj(obj.id);
+     });
+
+     // Window "message"s are messages that originate from the embedded iFrames,
+     // like "pong", zoom, click, and hover.
+     window.addEventListener('message', function(e){
+	 var message = e.data;
+	 var graph;
+	 /*Finds the graph that generated the event.*/
+	 for(var i in graphs) {
+             if(graphs[i].graphContentWindow === e.source) {
+		 graph = graphs[i];
+             }
+	 }
+	 if(typeof graph === "undefined") {
+             return;
+	 }
+
+	 var pinger = graph.pinger;
+	 var graphContentWindow = graph.graphContentWindow;
+	 var id = graph.id;
+
+	 if('pong' in message && message.pong) {
+	     /* This stops the pinging.*/
+             clearInterval(pinger);
+	     /*This tells the plotly the events for which it should send messages.*/
+             graphContentWindow.postMessage({
+		 'task': 'listen',
+		 'events': ['click', 'hover', 'zoom'] // Customize events here
+             }, 'https://plot.ly');
+	     /* Logs the ping message to the console.*/
+             console.log(id, '-->', message);
+	 } else 
+	 {   /*This could be broken into seperate if statements that further
+	       refine how things are handled.*/
+	     if (message.type==='hover' ||
+                 message.type==='zoom'  ||
+                 message.type==='click') {
+		 /* Logs the event message to the console.*/
+		 console.log(id, '-->', message);
 }
+	 }
+     });
 
-var graphs = {};
-
-$('iframe').each(function(i, obj){
-    graphs[obj.id] = init_graph_obj(obj.id);
-});
-
-// Window "message"s are messages that originate from the embedded iFrames,
-// like "pong", zoom, click, and hover.
-window.addEventListener('message', function(e){
-    var message = e.data;
-    var graph;
-    for(var i in graphs) {
-        if(graphs[i].graphContentWindow === e.source) {
-            graph = graphs[i];
-        }
-    }
-    if(typeof graph === "undefined") {
-        return;
-    }
-
-    var pinger = graph.pinger;
-    var graphContentWindow = graph.graphContentWindow;
-    var id = graph.id;
-
-    if('pong' in message && message.pong) {
-        clearInterval(pinger);
-        graphContentWindow.postMessage({
-            'task': 'listen',
-            'events': ['click', 'hover', 'zoom'] // Customize events here
-        }, 'https://plot.ly');
-    } else if (message.type==='hover' ||
-                message.type==='zoom'  ||
-                message.type==='click') {
-
-        console.log(id, '-->', message);
-    }
-});
-
-</script>
+    </script>
 
 </body>
 
