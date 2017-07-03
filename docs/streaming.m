@@ -10,7 +10,7 @@
 
 %The stream id can be found under settings when you login to plotly.
 %You can also create more stream ids.
-%plotlysetup('GlobalAI','Ky65tyitJhFKHLJpP4tv','stream_ids',{'jf7wxyyndf'})
+plotlysetup('GlobalAI','Ky65tyitJhFKHLJpP4tv','stream_ids',{'jf7wxyyndf'})
 
 my_credentials = loadplotlycredentials;
 my_stream_token = my_credentials.stream_ids{end};
@@ -29,6 +29,8 @@ data{2}.x = [];
 data{2}.y = [];
 data{2}.type = 'scatter';
 data{2}.stream.token = 'nj6qaaol69';  %Created another stream id to have another line in the plot.
+%To include this stream id the plotlysetup command should be.
+%plotlysetup('GlobalAI','Ky65tyitJhFKHLJpP4tv','stream_ids',{'jf7wxyyndf',nj6aao169'})
 data{2}.stream.maxpoints = 60;
 data{2}.marker.color='orange';
 args.filename = 'MY_FIRST_STREAM';
